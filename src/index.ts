@@ -1,6 +1,6 @@
 import { StorageClient } from '@supabase/storage-js';
 import { ProviderConfig, UploadProvider, StrapiFile } from './types';
-import { getBearerToken, getStorageEndpoint, getPathKey } from './utils';
+import { getBearerToken, getStorageEndpoint, getPathKey, kbytesToBytes, bytesToHumanReadable } from './utils';
 
 /**
  * Strapi instance interface (minimal typing for what we need)
@@ -120,9 +120,23 @@ export default (strapi: Strapi): UploadProvider => {
       // Sub-task 6.1: Return Promise<void> (implicit return)
     },
 
+    /**
+     * Sub-task 7.1: Validate file size against configured limits
+     */
     async checkFileSize(file: StrapiFile, options: { sizeLimit: number }): Promise<void> {
-      // To be implemented in task 7
-      throw new Error('checkFileSize method not yet implemented');
+      // Sub-task 7.1: Convert file size from KB to bytes using kbytesToBytes utility
+      const fileSizeInBytes = kbytesToBytes(file.size);
+      
+      // Sub-task 7.1: Compare against sizeLimit from options
+      if (fileSizeInBytes > options.sizeLimit) {
+        // Sub-task 7.1: Throw error with file name and human-readable size limit if exceeded
+        // Sub-task 7.1: Use bytesToHumanReadable utility for error message
+        throw new Error(
+          `${file.name} exceeds size limit of ${bytesToHumanReadable(options.sizeLimit)}`
+        );
+      }
+      
+      // Sub-task 7.1: Return Promise<void> (implicit return)
     },
 
     isPrivate(): boolean {
