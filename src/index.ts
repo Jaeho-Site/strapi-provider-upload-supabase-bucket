@@ -98,9 +98,26 @@ export default (strapi: Strapi): UploadProvider => {
       await uploadFile(file);
     },
 
+    /**
+     * Sub-task 6.1: Delete a file from Supabase Storage
+     */
     async delete(file: StrapiFile): Promise<void> {
-      // To be implemented in task 6
-      throw new Error('delete method not yet implemented');
+      // Sub-task 6.1: Extract file path from file.url using getPathKey utility
+      // For public buckets, file.url contains the full URL, so we need to extract just the path
+      // For private buckets, file.url already contains just the path
+      const filePath = getPathKey(file, directory);
+
+      // Sub-task 6.1: Call storage.from(bucket).remove() with file path array
+      const { error } = await storageClient
+        .from(config.bucket)
+        .remove([filePath]);
+
+      // Sub-task 6.1: Handle deletion errors and throw with descriptive message
+      if (error) {
+        throw new Error(`Failed to delete file from Supabase: ${error.message}`);
+      }
+
+      // Sub-task 6.1: Return Promise<void> (implicit return)
     },
 
     async checkFileSize(file: StrapiFile, options: { sizeLimit: number }): Promise<void> {
