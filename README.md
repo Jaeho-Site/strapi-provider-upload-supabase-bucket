@@ -1,371 +1,246 @@
 # Strapi Provider Upload Supabase
 
-A Supabase Storage upload provider for Strapi v5 with support for both public and private buckets.
+[![npm version](https://img.shields.io/npm/v/strapi-provider-upload-supabase-bucket.svg)](https://www.npmjs.com/package/strapi-provider-upload-supabase-bucket)
+[![npm downloads](https://img.shields.io/npm/dm/strapi-provider-upload-supabase-bucket.svg)](https://www.npmjs.com/package/strapi-provider-upload-supabase-bucket)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+Upload files to Supabase Storage from Strapi v5 with support for both public and private buckets.
 
 ## Features
 
-- ✅ Full Strapi v5 compatibility
-- ✅ TypeScript support with complete type definitions
-- ✅ Public bucket support with permanent URLs
-- ✅ Private bucket support with time-limited signed URLs
-- ✅ Node.js 22 and 24 support with native fetch
-- ✅ Configurable file size validation
-- ✅ Automatic file path management
+- ✅ Strapi v5 compatible
+- ✅ Node.js 20 and 22 support
+- ✅ TypeScript with full type definitions
+- ✅ CommonJS and ESM support
+- ✅ Public buckets (permanent URLs)
+- ✅ Private buckets (time-limited signed URLs)
 
 ## Installation
 
 ```bash
-npm install strapi-provider-upload-supabase
-```
-
-or
-
-```bash
-yarn add strapi-provider-upload-supabase
+npm install strapi-provider-upload-supabase-bucket
 ```
 
 ## Requirements
 
-- Node.js >= 22.0.0 and <= 24.x.x
+- Node.js >= 20.0.0 and <= 22.x.x
 - Strapi >= 5.0.0
-- A Supabase project with a storage bucket
+- Supabase project with a storage bucket
 
-## Configuration
+## Quick Start
 
-### Environment Variables
+### 1. Environment Variables
 
-Add the following environment variables to your `.env` file:
+Add to your `.env` file:
 
 ```env
 SUPABASE_API_URL=https://your-project.supabase.co
 SUPABASE_API_KEY=your-service-role-key
 SUPABASE_BUCKET=your-bucket-name
+SUPABASE_DIRECTORY=uploads
+SUPABASE_PUBLIC_FILES=true
+SUPABASE_SIGNED_URL_EXPIRES=3600
 ```
 
-### Plugin Configuration
+### 2. Plugin Configuration
 
-Create or update `config/plugins.js` (or `config/plugins.ts` for TypeScript):
+Create or update `config/plugins.ts` (or `config/plugins.js` for JavaScript):
 
-#### Public Bucket Configuration
+**TypeScript:**
 
-For public buckets where files are accessible via permanent public URLs:
-
-```javascript
-module.exports = {
+```typescript
+export default ({ env }) => ({
   upload: {
     config: {
-      provider: 'strapi-provider-upload-supabase',
+      provider: 'strapi-provider-upload-supabase-bucket',
       providerOptions: {
-        apiUrl: process.env.SUPABASE_API_URL,
-        apiKey: process.env.SUPABASE_API_KEY,
-        bucket: process.env.SUPABASE_BUCKET,
-        directory: 'uploads', // optional, defaults to ''
-        publicFiles: true, // optional, defaults to true
+        apiUrl: env('SUPABASE_API_URL'),
+        apiKey: env('SUPABASE_API_KEY'),
+        bucket: env('SUPABASE_BUCKET'),
+        directory: env('SUPABASE_DIRECTORY', ''),
+        publicFiles: env.bool('SUPABASE_PUBLIC_FILES', true),
+        signedUrlExpires: env.int('SUPABASE_SIGNED_URL_EXPIRES', 3600),
+      },
+      sizeLimit: 250 * 1024 * 1024, // 250MB
+    },
+  },
+});
+```
+
+**JavaScript:**
+
+```javascript
+module.exports = ({ env }) => ({
+  upload: {
+    config: {
+      provider: 'strapi-provider-upload-supabase-bucket',
+      providerOptions: {
+        apiUrl: env('SUPABASE_API_URL'),
+        apiKey: env('SUPABASE_API_KEY'),
+        bucket: env('SUPABASE_BUCKET'),
+        directory: env('SUPABASE_DIRECTORY', ''),
+        publicFiles: env.bool('SUPABASE_PUBLIC_FILES', true),
+        signedUrlExpires: env.int('SUPABASE_SIGNED_URL_EXPIRES', 3600),
+      },
+      sizeLimit: 250 * 1024 * 1024, // 250MB
+    },
+  },
+});
+```
+
+### 3. Security Configuration
+
+Update `config/middlewares.ts` (or `config/middlewares.js`) to allow Supabase URLs:
+
+```javascript
+module.exports = [
+  'strapi::logger',
+  'strapi::errors',
+  {
+    name: 'strapi::security',
+    config: {
+      contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+          'connect-src': ["'self'", 'https:'],
+          'img-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'market-assets.strapi.io',
+            'https://your-project.supabase.co', // Replace with your project URL
+          ],
+          'media-src': [
+            "'self'",
+            'data:',
+            'blob:',
+            'market-assets.strapi.io',
+            'https://your-project.supabase.co', // Replace with your project URL
+          ],
+          upgradeInsecureRequests: null,
+        },
       },
     },
   },
-};
-```
-
-#### Private Bucket Configuration
-
-For private buckets where files require authentication and use time-limited signed URLs:
-
-```javascript
-module.exports = {
-  upload: {
-    config: {
-      provider: 'strapi-provider-upload-supabase',
-      providerOptions: {
-        apiUrl: process.env.SUPABASE_API_URL,
-        apiKey: process.env.SUPABASE_API_KEY,
-        bucket: process.env.SUPABASE_BUCKET_PRIVATE,
-        directory: 'private-uploads', // optional, defaults to ''
-        publicFiles: false, // set to false for private buckets
-        signedUrlExpires: 3600, // optional, defaults to 3600 (1 hour)
-      },
-    },
-  },
-};
+  'strapi::cors',
+  'strapi::poweredBy',
+  'strapi::query',
+  'strapi::body',
+  'strapi::session',
+  'strapi::favicon',
+  'strapi::public',
+];
 ```
 
 ## Configuration Options
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
-| `apiUrl` | string | Yes | - | Your Supabase project URL (e.g., `https://xxx.supabase.co`) |
-| `apiKey` | string | Yes | - | Your Supabase service role key |
-| `bucket` | string | Yes | - | Name of the Supabase storage bucket |
-| `directory` | string | No | `''` | Optional subdirectory within the bucket for organizing files |
-| `publicFiles` | boolean | No | `true` | Whether the bucket is public (`true`) or private (`false`) |
-| `signedUrlExpires` | number | No | `3600` | Expiration time in seconds for signed URLs (private buckets only) |
+| `apiUrl` | string | Yes | - | Supabase project URL |
+| `apiKey` | string | Yes | - | Supabase service role key |
+| `bucket` | string | Yes | - | Storage bucket name |
+| `directory` | string | No | `''` | Subdirectory for file organization |
+| `publicFiles` | boolean | No | `true` | Public (`true`) or private (`false`) bucket |
+| `signedUrlExpires` | number | No | `3600` | Signed URL expiration (seconds, private only) |
 
 ## Public vs Private Buckets
 
-### Public Buckets
+### Public Buckets (`publicFiles: true`)
 
-When `publicFiles` is set to `true` (default):
+Files are accessible via permanent public URLs without authentication.
 
-- Files are uploaded to a public Supabase bucket
-- Permanent public URLs are generated and stored
-- Files are accessible without authentication
-- Best for: public assets, images, documents that should be freely accessible
-
-**Example URL format:**
 ```
-https://your-project.supabase.co/storage/v1/object/public/bucket-name/uploads/abc123.jpg
+https://your-project.supabase.co/storage/v1/object/public/bucket/uploads/file.jpg
 ```
 
-### Private Buckets
+**Best for:** Public assets, images, documents
 
-When `publicFiles` is set to `false`:
+### Private Buckets (`publicFiles: false`)
 
-- Files are uploaded to a private Supabase bucket
-- Only file paths are stored (not full URLs)
-- Access requires generating time-limited signed URLs
-- Signed URLs expire after the configured duration
-- Best for: user documents, sensitive files, content requiring access control
+Files require time-limited signed URLs for access.
 
-**How it works:**
-1. Files are uploaded and only the path is stored
-2. When access is needed, call `getSignedUrl()` to generate a temporary URL
-3. The signed URL expires after `signedUrlExpires` seconds
-4. New signed URLs can be generated as needed
+```
+https://your-project.supabase.co/storage/v1/object/sign/bucket/uploads/file.jpg?token=...
+```
 
-## Usage Examples
+**Best for:** User documents, sensitive files, access-controlled content
 
-### Basic File Upload
+#### Accessing Private Files
 
 ```javascript
-// Strapi handles file uploads automatically through the Media Library
-// or through the REST API
-```
-
-### Accessing Files in Code
-
-#### Public Bucket Files
-
-```javascript
-// For public buckets, file.url contains the permanent public URL
+// Get file from Strapi
 const file = await strapi.plugins.upload.services.upload.findOne(fileId);
-console.log(file.url); // Direct public URL
-```
 
-#### Private Bucket Files
-
-```javascript
-// For private buckets, generate a signed URL
-const file = await strapi.plugins.upload.services.upload.findOne(fileId);
+// Generate signed URL
 const provider = strapi.plugins.upload.provider;
-
-// Generate a time-limited signed URL
 const { url } = await provider.getSignedUrl(file);
-console.log(url); // Temporary signed URL
+
+// Use the temporary URL (expires after signedUrlExpires seconds)
+console.log(url);
 ```
 
-### Custom Controller Example
+## Supabase Setup
 
-```javascript
-// api/custom/controllers/file.js
-module.exports = {
-  async getSecureFile(ctx) {
-    const { id } = ctx.params;
-    
-    // Get the file from Strapi
-    const file = await strapi.plugins.upload.services.upload.findOne(id);
-    
-    if (!file) {
-      return ctx.notFound('File not found');
-    }
-    
-    // Get the upload provider
-    const provider = strapi.plugins.upload.provider;
-    
-    // Check if bucket is private
-    if (provider.isPrivate()) {
-      // Generate signed URL for private files
-      const { url } = await provider.getSignedUrl(file);
-      return ctx.send({ url });
-    } else {
-      // Return public URL directly
-      return ctx.send({ url: file.url });
-    }
-  },
-};
-```
-
-## Setting Up Supabase Storage
-
-### 1. Create a Storage Bucket
-
-In your Supabase dashboard:
-
-1. Go to **Storage** section
-2. Click **New bucket**
-3. Enter a bucket name
-4. Choose **Public** or **Private** based on your needs
-5. Click **Create bucket**
-
-### 2. Configure Bucket Policies (Private Buckets Only)
-
-For private buckets, you may want to set up Row Level Security (RLS) policies:
-
-```sql
--- Example: Allow authenticated users to read their own files
-CREATE POLICY "Users can read own files"
-ON storage.objects FOR SELECT
-USING (auth.uid()::text = (storage.foldername(name))[1]);
-```
-
-### 3. Get Your Credentials
-
-1. Go to **Settings** > **API**
-2. Copy your **Project URL** (apiUrl)
-3. Copy your **service_role** key (apiKey) - **Keep this secret!**
+1. Go to your Supabase dashboard
+2. Navigate to **Storage** → **New bucket**
+3. Create a bucket (choose Public or Private)
+4. Get credentials from **Settings** → **API**:
+   - Project URL → `SUPABASE_API_URL`
+   - service_role key → `SUPABASE_API_KEY`
 
 ## Troubleshooting
 
-### Error: "Supabase provider requires apiUrl, apiKey, and bucket configuration"
+### Files not displaying
 
-**Cause:** Missing required configuration parameters.
+Check `config/middlewares.js` includes your Supabase URL in CSP directives.
 
-**Solution:** Ensure all required fields are set in your `config/plugins.js`:
-- `apiUrl`
-- `apiKey`
-- `bucket`
+### Upload fails
 
-### Error: "Failed to upload file to Supabase"
+- Verify `apiUrl`, `apiKey`, and `bucket` are correct
+- Ensure you're using the `service_role` key (not `anon` key)
+- Check bucket exists in Supabase
 
-**Possible causes:**
-1. Invalid API credentials
-2. Bucket doesn't exist
-3. Insufficient permissions
-4. Network connectivity issues
+### Private bucket signed URLs not working
 
-**Solutions:**
-- Verify your `apiUrl` and `apiKey` are correct
-- Check that the bucket exists in your Supabase project
-- Ensure you're using the `service_role` key (not the `anon` key)
-- Check your network connection and firewall settings
+- Verify bucket is set to Private in Supabase
+- Check `publicFiles: false` in configuration
+- Ensure signed URLs are regenerated before expiration
 
-### Error: "File exceeds size limit"
+## Testing
 
-**Cause:** File size exceeds the configured limit in Strapi.
+Tested and verified on:
 
-**Solution:** Adjust the size limit in your Strapi configuration:
+| Bucket Type | Node 20 | Node 22 |
+|-------------|---------|---------|
+| Public      | ✅      | ✅      |
+| Private     | ✅      | ✅      |
 
-```javascript
-// config/plugins.js
-module.exports = {
-  upload: {
-    config: {
-      sizeLimit: 250 * 1024 * 1024, // 250MB in bytes
-      provider: 'strapi-provider-upload-supabase',
-      // ... other options
-    },
-  },
-};
-```
+## Privacy
 
-### Signed URLs Not Working (Private Buckets)
+This provider does not collect, track, or transmit any usage data. All operations are performed directly between your Strapi instance and your Supabase project.
 
-**Possible causes:**
-1. Bucket is not configured as private in Supabase
-2. Signed URL has expired
-3. Incorrect bucket permissions
+## Security
 
-**Solutions:**
-- Verify bucket is set to **Private** in Supabase dashboard
-- Generate a new signed URL (they expire after `signedUrlExpires` seconds)
-- Check bucket policies and RLS settings in Supabase
-
-### Files Not Accessible (Public Buckets)
-
-**Possible causes:**
-1. Bucket is not configured as public in Supabase
-2. `publicFiles` is set to `false` in configuration
-
-**Solutions:**
-- Verify bucket is set to **Public** in Supabase dashboard
-- Ensure `publicFiles: true` in your provider configuration
-
-### TypeScript Errors
-
-**Cause:** Missing type definitions.
-
-**Solution:** The package includes TypeScript definitions. Ensure your `tsconfig.json` includes:
-
-```json
-{
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "esModuleInterop": true
-  }
-}
-```
-
-## Security Considerations
-
-### API Key Security
-
-- **Never** commit your `service_role` key to version control
-- Use environment variables for all sensitive credentials
-- The `service_role` key bypasses Row Level Security - use with caution
-- Consider using the `anon` key with RLS policies for user-facing operations
-
-### Private Bucket Best Practices
-
-- Set appropriate `signedUrlExpires` duration (shorter is more secure)
+- Never commit your `service_role` key to version control
+- Use environment variables for all credentials
+- Set appropriate `signedUrlExpires` duration for private buckets
 - Implement proper authentication before generating signed URLs
-- Use RLS policies to control access at the database level
-- Regularly audit access logs in Supabase dashboard
-
-### Public Bucket Best Practices
-
-- Only use public buckets for truly public content
-- Be aware that public URLs are permanent and accessible to anyone
-- Consider using private buckets with signed URLs for sensitive content
-- Implement proper file validation before upload
-
-## Migration from v4 Provider
-
-If you're migrating from the deprecated Strapi v4 Supabase provider:
-
-### Key Differences
-
-1. **Strapi v5 Compatibility:** This provider is built for Strapi v5
-2. **Private Bucket Support:** New support for private buckets with signed URLs
-3. **TypeScript:** Full TypeScript implementation with type definitions
-4. **Node.js Version:** Requires Node.js 22+ (uses native fetch)
-
-### Migration Steps
-
-1. Update to Strapi v5
-2. Install this provider: `npm install strapi-provider-upload-supabase`
-3. Update your configuration in `config/plugins.js`
-4. Test file uploads and access
-5. For private buckets, update your code to use `getSignedUrl()`
 
 ## License
 
 MIT
 
+## Links
+
+- [GitHub Repository](https://github.com/Jaeho-site/strapi-provider-upload-supabase-bucket)
+- [Issue Tracker](https://github.com/Jaeho-site/strapi-provider-upload-supabase-bucket/issues)
+- [Supabase Storage Docs](https://supabase.com/docs/guides/storage)
+- [Strapi Upload Docs](https://docs.strapi.io/dev-docs/plugins/upload)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
 
-## Support
+---
 
-For issues and questions:
-- Check the [Troubleshooting](#troubleshooting) section
-- Review [Supabase Storage documentation](https://supabase.com/docs/guides/storage)
-- Review [Strapi Upload documentation](https://docs.strapi.io/dev-docs/plugins/upload)
-
-## Changelog
-
-### 1.0.0
-- Initial release
-- Strapi v5 support
-- Public and private bucket support
-- TypeScript implementation
-- Node.js 22 and 24 support
+Made with ❤️ for the Strapi community

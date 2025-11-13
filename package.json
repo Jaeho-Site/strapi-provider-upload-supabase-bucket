@@ -1,7 +1,7 @@
 {
-  "name": "strapi-provider-upload-supabase",
+  "name": "strapi-provider-upload-supabase-bucket",
   "version": "1.0.0",
-  "description": "Supabase Storage upload provider for Strapi v5 with support for public and private buckets",
+  "description": "Upload files to Supabase Storage from Strapi v5 with public and private bucket support",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "source": "./src/index.ts",
@@ -30,12 +30,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Jaeho-site/strapi-provider-upload-supabase.git"
+    "url": "git+https://github.com/Jaeho-site/strapi-provider-upload-supabase-bucket.git"
   },
   "bugs": {
-    "url": "https://github.com/Jaeho-site/strapi-provider-upload-supabase/issues"
+    "url": "https://github.com/Jaeho-site/strapi-provider-upload-supabase-bucket/issues"
   },
-  "homepage": "https://github.com/Jaeho-site/strapi-provider-upload-supabase#readme",
+  "homepage": "https://github.com/Jaeho-site/strapi-provider-upload-supabase-bucket#readme",
   "scripts": {
     "build": "npm run build:code && npm run build:types",
     "build:code": "rollup -c",
