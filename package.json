@@ -63,7 +63,8 @@
     "description": "Upload files to Supabase Storage with support for public and private buckets"
   },
   "engines": {
-    "node": ">=22.0.0 <=24.x.x"
+    "node": ">=20.0.0 <=22.x.x",
+    "npm": ">=6.0.0"
   },
   "dependencies": {
     "@supabase/storage-js": "^2.81.1"
