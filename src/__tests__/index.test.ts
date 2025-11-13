@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import initProvider from '../index';
-import { StrapiFile } from '../types';
+import initProvider from '../index.js';
+import { StrapiFile } from '../types.js';
 import { Readable } from 'stream';
 
 // Mock the @supabase/storage-js module
@@ -14,21 +14,19 @@ vi.mock('@supabase/storage-js', () => {
   };
 });
 
+// Helper function to create mock config
+const createMockConfig = (config: any) => config;
+
 describe('Provider Initialization', () => {
-  const createMockStrapi = (config: any) => ({
-    plugin: () => ({
-      config: () => config,
-    }),
-  });
 
   it('should initialize with valid configuration', () => {
-    const mockStrapi = createMockStrapi({
+    const config = createMockConfig({
       apiUrl: 'https://test.supabase.co',
       apiKey: 'test-key',
       bucket: 'test-bucket',
     });
 
-    const provider = initProvider(mockStrapi as any);
+    const provider = initProvider.init(config);
     expect(provider).toBeDefined();
     expect(provider.upload).toBeDefined();
     expect(provider.delete).toBeDefined();
@@ -38,18 +36,18 @@ describe('Provider Initialization', () => {
   });
 
   it('should apply default values for optional fields', () => {
-    const mockStrapi = createMockStrapi({
+    const config = createMockConfig({
       apiUrl: 'https://test.supabase.co',
       apiKey: 'test-key',
       bucket: 'test-bucket',
     });
 
-    const provider = initProvider(mockStrapi as any);
+    const provider = initProvider.init(config);
     expect(provider.isPrivate()).toBe(false); // publicFiles defaults to true
   });
 
   it('should use provided optional configuration', () => {
-    const mockStrapi = createMockStrapi({
+    const config = createMockConfig({
       apiUrl: 'https://test.supabase.co',
       apiKey: 'test-key',
       bucket: 'test-bucket',
@@ -57,7 +55,7 @@ describe('Provider Initialization', () => {
       signedUrlExpires: 7200,
     });
 
-    const provider = initProvider(mockStrapi as any);
+    const provider = initProvider.init(config);
     expect(provider.isPrivate()).toBe(true);
   });
 });
@@ -65,12 +63,6 @@ describe('Provider Initialization', () => {
 describe('Provider Methods', () => {
   let mockStorageClient: any;
   let mockBucket: any;
-
-  const createMockStrapi = (config: any) => ({
-    plugin: () => ({
-      config: () => config,
-    }),
-  });
 
   const createMockFile = (overrides?: Partial<StrapiFile>): StrapiFile => ({
     name: 'test.jpg',
@@ -107,7 +99,7 @@ describe('Provider Methods', () => {
 
   describe('upload method', () => {
     it('should upload file to public bucket and set public URL', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'public-bucket',
@@ -119,7 +111,7 @@ describe('Provider Methods', () => {
         data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/public-bucket/abc123.jpg' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.upload(file);
@@ -138,7 +130,7 @@ describe('Provider Methods', () => {
     });
 
     it('should upload file to private bucket and set path', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'private-bucket',
@@ -147,7 +139,7 @@ describe('Provider Methods', () => {
 
       mockBucket.upload.mockResolvedValue({ data: { path: 'abc123.jpg' }, error: null });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.upload(file);
@@ -157,7 +149,7 @@ describe('Provider Methods', () => {
     });
 
     it('should handle file with stream', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -168,7 +160,7 @@ describe('Provider Methods', () => {
         data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/test-bucket/abc123.jpg' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const stream = new Readable();
       stream.push('test data');
       stream.push(null);
@@ -185,7 +177,7 @@ describe('Provider Methods', () => {
     });
 
     it('should use directory in file path', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -197,7 +189,7 @@ describe('Provider Methods', () => {
         data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/test-bucket/uploads/abc123.jpg' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.upload(file);
@@ -212,7 +204,7 @@ describe('Provider Methods', () => {
 
   describe('uploadStream method', () => {
     it('should upload stream using same logic as upload', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -223,7 +215,7 @@ describe('Provider Methods', () => {
         data: { publicUrl: 'https://test.supabase.co/storage/v1/object/public/test-bucket/abc123.jpg' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.uploadStream(file);
@@ -235,7 +227,7 @@ describe('Provider Methods', () => {
 
   describe('delete method', () => {
     it('should delete file from bucket', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -243,7 +235,7 @@ describe('Provider Methods', () => {
 
       mockBucket.remove.mockResolvedValue({ data: null, error: null });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.delete(file);
@@ -252,7 +244,7 @@ describe('Provider Methods', () => {
     });
 
     it('should delete file with directory path', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -261,7 +253,7 @@ describe('Provider Methods', () => {
 
       mockBucket.remove.mockResolvedValue({ data: null, error: null });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await provider.delete(file);
@@ -272,13 +264,13 @@ describe('Provider Methods', () => {
 
   describe('checkFileSize method', () => {
     it('should pass when file is under limit', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ size: 100 }); // 100 KB = 100000 bytes
 
       await expect(
@@ -287,13 +279,13 @@ describe('Provider Methods', () => {
     });
 
     it('should throw when file exceeds limit', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ size: 100, name: 'large-file.jpg' }); // 100 KB = 100000 bytes
 
       await expect(
@@ -302,13 +294,13 @@ describe('Provider Methods', () => {
     });
 
     it('should include human-readable size in error message', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ size: 2000 }); // 2000 KB = 2000000 bytes
 
       await expect(
@@ -319,40 +311,40 @@ describe('Provider Methods', () => {
 
   describe('isPrivate method', () => {
     it('should return false for public bucket', () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
         publicFiles: true,
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       expect(provider.isPrivate()).toBe(false);
     });
 
     it('should return true for private bucket', () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
         publicFiles: false,
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       expect(provider.isPrivate()).toBe(true);
     });
   });
 
   describe('getSignedUrl method', () => {
     it('should return existing URL for public bucket', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
         publicFiles: true,
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({
         url: 'https://test.supabase.co/storage/v1/object/public/test-bucket/abc123.jpg',
       });
@@ -364,7 +356,7 @@ describe('Provider Methods', () => {
     });
 
     it('should generate signed URL for private bucket', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -377,7 +369,7 @@ describe('Provider Methods', () => {
         error: null,
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ url: 'abc123.jpg' });
 
       const result = await provider.getSignedUrl(file);
@@ -387,7 +379,7 @@ describe('Provider Methods', () => {
     });
 
     it('should use custom expiration time', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -400,7 +392,7 @@ describe('Provider Methods', () => {
         error: null,
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ url: 'abc123.jpg' });
 
       await provider.getSignedUrl(file);
@@ -454,42 +446,42 @@ describe('Error Handling', () => {
 
   describe('Configuration validation errors', () => {
     it('should throw error when apiUrl is missing', () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      expect(() => initProvider(mockStrapi as any)).toThrow(
+      expect(() => initProvider.init(config)).toThrow(
         'Supabase provider requires apiUrl, apiKey, and bucket configuration'
       );
     });
 
     it('should throw error when apiKey is missing', () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         bucket: 'test-bucket',
       });
 
-      expect(() => initProvider(mockStrapi as any)).toThrow(
+      expect(() => initProvider.init(config)).toThrow(
         'Supabase provider requires apiUrl, apiKey, and bucket configuration'
       );
     });
 
     it('should throw error when bucket is missing', () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
       });
 
-      expect(() => initProvider(mockStrapi as any)).toThrow(
+      expect(() => initProvider.init(config)).toThrow(
         'Supabase provider requires apiUrl, apiKey, and bucket configuration'
       );
     });
 
     it('should throw error when all required fields are missing', () => {
-      const mockStrapi = createMockStrapi({});
+      const config = createMockConfig({});
 
-      expect(() => initProvider(mockStrapi as any)).toThrow(
+      expect(() => initProvider.init(config)).toThrow(
         'Supabase provider requires apiUrl, apiKey, and bucket configuration'
       );
     });
@@ -497,7 +489,7 @@ describe('Error Handling', () => {
 
   describe('Upload failure scenarios', () => {
     it('should throw error when upload fails', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -508,7 +500,7 @@ describe('Error Handling', () => {
         error: { message: 'Storage quota exceeded' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await expect(provider.upload(file)).rejects.toThrow(
@@ -517,7 +509,7 @@ describe('Error Handling', () => {
     });
 
     it('should throw error with descriptive message on network failure', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -528,14 +520,14 @@ describe('Error Handling', () => {
         error: { message: 'Network error' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await expect(provider.upload(file)).rejects.toThrow('Network error');
     });
 
     it('should throw error when bucket does not exist', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'non-existent-bucket',
@@ -546,7 +538,7 @@ describe('Error Handling', () => {
         error: { message: 'Bucket not found' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await expect(provider.upload(file)).rejects.toThrow('Bucket not found');
@@ -555,7 +547,7 @@ describe('Error Handling', () => {
 
   describe('Delete failure scenarios', () => {
     it('should throw error when delete fails', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -566,7 +558,7 @@ describe('Error Handling', () => {
         error: { message: 'File not found' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await expect(provider.delete(file)).rejects.toThrow(
@@ -575,7 +567,7 @@ describe('Error Handling', () => {
     });
 
     it('should throw error with descriptive message on permission error', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -586,7 +578,7 @@ describe('Error Handling', () => {
         error: { message: 'Insufficient permissions' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile();
 
       await expect(provider.delete(file)).rejects.toThrow('Insufficient permissions');
@@ -595,7 +587,7 @@ describe('Error Handling', () => {
 
   describe('Signed URL generation failures', () => {
     it('should throw error when signed URL generation fails', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -607,7 +599,7 @@ describe('Error Handling', () => {
         error: { message: 'Invalid file path' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ url: 'invalid/path.jpg' });
 
       await expect(provider.getSignedUrl(file)).rejects.toThrow(
@@ -616,7 +608,7 @@ describe('Error Handling', () => {
     });
 
     it('should throw error when file does not exist', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
@@ -628,7 +620,7 @@ describe('Error Handling', () => {
         error: { message: 'Object not found' },
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ url: 'missing.jpg' });
 
       await expect(provider.getSignedUrl(file)).rejects.toThrow('Object not found');
@@ -637,13 +629,13 @@ describe('Error Handling', () => {
 
   describe('File size exceeded errors', () => {
     it('should throw error with file name when size exceeded', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ size: 5000, name: 'huge-image.jpg' });
 
       await expect(
@@ -652,13 +644,13 @@ describe('Error Handling', () => {
     });
 
     it('should include human-readable size limit in error', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       const file = createMockFile({ size: 10000 });
 
       await expect(
@@ -667,13 +659,13 @@ describe('Error Handling', () => {
     });
 
     it('should format different size units correctly in error', async () => {
-      const mockStrapi = createMockStrapi({
+      const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
         bucket: 'test-bucket',
       });
 
-      const provider = initProvider(mockStrapi as any);
+      const provider = initProvider.init(config);
       
       // Test KB limit
       const file1 = createMockFile({ size: 100 });
@@ -689,3 +681,4 @@ describe('Error Handling', () => {
     });
   });
 });
+

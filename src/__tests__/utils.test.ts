@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getBearerToken, getStorageEndpoint, getPathKey, kbytesToBytes, bytesToHumanReadable } from '../utils';
-import { StrapiFile } from '../types';
+import { getBearerToken, getStorageEndpoint, getPathKey, kbytesToBytes, bytesToHumanReadable } from '../utils.js';
+import { StrapiFile } from '../types.js';
 
 describe('getBearerToken', () => {
   it('should format API key as Bearer token', () => {

@@ -2,20 +2,66 @@
   "name": "strapi-provider-upload-supabase",
   "version": "1.0.0",
   "description": "Supabase Storage upload provider for Strapi v5 with support for public and private buckets",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "source": "./src/index.ts",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/"
+  ],
+  "exports": {
+    ".": {
+      "require": "./dist/index.js",
+      "import": "./dist/index.mjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "author": {
+    "name": "shin jaeho",
+    "email": "sjaeho348@gmail.com",
+    "url": "https://github.com/Jaeho-site"
+  },
+  "maintainers": [
+    {
+      "name": "shin jaeho",
+      "email": "sjaeho348@gmail.com",
+      "url": "https://github.com/Jaeho-site"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jaeho-site/strapi-provider-upload-supabase.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Jaeho-site/strapi-provider-upload-supabase/issues"
+  },
+  "homepage": "https://github.com/Jaeho-site/strapi-provider-upload-supabase#readme",
   "scripts": {
-    "build": "tsc",
+    "build": "npm run build:code && npm run build:types",
+    "build:code": "rollup -c",
+    "build:types": "tsc --emitDeclarationOnly",
+    "clean": "rm -rf ./dist",
     "test": "vitest --run",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
     "strapi",
     "strapi-provider",
+    "strapi-plugin",
     "upload",
     "supabase",
-    "storage"
+    "storage",
+    "strapi5",
+    "file-upload",
+    "cloud-storage",
+    "s3-alternative"
   ],
+  "strapi": {
+    "kind": "provider",
+    "name": "upload-supabase",
+    "displayName": "Supabase Storage",
+    "description": "Upload files to Supabase Storage with support for public and private buckets"
+  },
   "engines": {
     "node": ">=22.0.0 <=24.x.x"
   },
@@ -23,7 +69,13 @@
     "@supabase/storage-js": "^2.81.1"
   },
   "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.0",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^15.3.0",
+    "@rollup/plugin-swc": "^0.4.0",
+    "@swc/core": "^1.3.10",
     "@types/node": "^22.0.0",
+    "rollup": "^4.27.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   },
