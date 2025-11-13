@@ -139,14 +139,44 @@ export default (strapi: Strapi): UploadProvider => {
       // Sub-task 7.1: Return Promise<void> (implicit return)
     },
 
+    /**
+     * Sub-task 8.1: Check if the bucket is configured as private
+     * @returns true if bucket is private, false if public
+     */
     isPrivate(): boolean {
-      // To be implemented in task 8
-      throw new Error('isPrivate method not yet implemented');
+      // Sub-task 8.1: Return inverse of publicFiles configuration
+      return !publicFiles;
     },
 
+    /**
+     * Sub-task 8.2: Generate a signed URL for file access
+     * For public buckets, returns the existing public URL
+     * For private buckets, generates a time-limited signed URL
+     * @param file - The file object
+     * @returns Promise resolving to object with url property
+     */
     async getSignedUrl(file: StrapiFile): Promise<{ url: string }> {
-      // To be implemented in task 8
-      throw new Error('getSignedUrl method not yet implemented');
+      // Sub-task 8.2: Check if bucket is private using isPrivate()
+      if (!this.isPrivate()) {
+        // Sub-task 8.2: For public buckets, return existing file.url in { url } object format
+        return { url: file.url };
+      }
+
+      // Sub-task 8.2: For private buckets, extract file path and call createSignedUrl()
+      const filePath = file.url; // For private buckets, file.url contains just the path
+
+      // Sub-task 8.2: Use signedUrlExpires configuration for expiration time
+      const { data, error } = await storageClient
+        .from(config.bucket)
+        .createSignedUrl(filePath, signedUrlExpires);
+
+      // Sub-task 8.2: Handle signed URL generation errors and throw with descriptive message
+      if (error) {
+        throw new Error(`Failed to generate signed URL: ${error.message}`);
+      }
+
+      // Sub-task 8.2: Return Promise<{ url: string }>
+      return { url: data.signedUrl };
     },
   };
 };
