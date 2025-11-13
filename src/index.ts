@@ -4,6 +4,9 @@ import { getBearerToken, getStorageEndpoint, getPathKey, kbytesToBytes, bytesToH
 
 /**
  * Strapi instance interface (minimal typing for what we need)
+ * 
+ * This interface defines the minimal Strapi API surface required by the provider
+ * to retrieve configuration from the Strapi v5 plugin system.
  */
 interface Strapi {
   plugin(name: string): {
@@ -13,8 +16,35 @@ interface Strapi {
 
 /**
  * Initialize the Supabase Storage upload provider for Strapi v5
- * @param strapi - The Strapi instance
- * @returns Upload provider implementation
+ * 
+ * This is the main entry point for the provider. It validates configuration,
+ * initializes the Supabase Storage Client, and returns an object implementing
+ * the UploadProvider interface with all required methods.
+ * 
+ * @param strapi - The Strapi instance used to retrieve plugin configuration
+ * @returns Upload provider implementation with methods for file operations
+ * @throws {Error} If required configuration (apiUrl, apiKey, bucket) is missing
+ * 
+ * @example
+ * ```typescript
+ * // Strapi automatically calls this function during initialization
+ * // Configuration is provided via config/plugins.js:
+ * module.exports = {
+ *   upload: {
+ *     config: {
+ *       provider: 'strapi-provider-upload-supabase',
+ *       providerOptions: {
+ *         apiUrl: process.env.SUPABASE_API_URL,
+ *         apiKey: process.env.SUPABASE_API_KEY,
+ *         bucket: process.env.SUPABASE_BUCKET,
+ *         directory: 'uploads',
+ *         publicFiles: true,
+ *         signedUrlExpires: 3600,
+ *       },
+ *     },
+ *   },
+ * };
+ * ```
  */
 export default (strapi: Strapi): UploadProvider => {
   // Sub-task 4.2: Retrieve configuration from Strapi v5 config system
@@ -44,7 +74,22 @@ export default (strapi: Strapi): UploadProvider => {
 
   /**
    * Internal function to handle file upload to Supabase Storage
-   * Sub-tasks 5.1 & 5.2: Upload file and generate appropriate URL
+   * 
+   * This function handles the actual upload process and URL generation for both
+   * public and private buckets. It's used by both upload() and uploadStream() methods.
+   * 
+   * For public buckets:
+   * - Uploads the file and generates a permanent public URL
+   * - Stores the full URL in file.url
+   * 
+   * For private buckets:
+   * - Uploads the file and stores only the file path
+   * - Signed URLs must be generated later using getSignedUrl()
+   * 
+   * @param file - The Strapi file object containing file data and metadata
+   * @throws {Error} If the upload operation fails
+   * 
+   * @internal
    */
   const uploadFile = async (file: StrapiFile): Promise<void> => {
     // Sub-task 5.1: Generate file path using getPathKey utility
@@ -85,21 +130,63 @@ export default (strapi: Strapi): UploadProvider => {
   // Sub-task 4.1: Return provider object with required methods
   return {
     /**
-     * Sub-task 5.3: Upload a file to Supabase Storage
+     * Upload a file to Supabase Storage
+     * 
+     * Handles file uploads for both buffer and stream-based file objects.
+     * The file's URL property will be updated with either a public URL
+     * (for public buckets) or a file path (for private buckets).
+     * 
+     * @param file - The Strapi file object to upload
+     * @returns Promise that resolves when upload is complete
+     * @throws {Error} If the upload operation fails
+     * 
+     * @example
+     * ```typescript
+     * // Strapi calls this automatically during file upload
+     * await provider.upload(file);
+     * console.log(file.url); // Public URL or file path
+     * ```
      */
     async upload(file: StrapiFile): Promise<void> {
       await uploadFile(file);
     },
 
     /**
-     * Sub-task 5.4: Upload a file stream to Supabase Storage (alias pattern)
+     * Upload a file stream to Supabase Storage
+     * 
+     * This method is functionally identical to upload() and handles both
+     * buffer and stream-based uploads. It exists to satisfy the Strapi v5
+     * provider interface requirements.
+     * 
+     * @param file - The Strapi file object with stream to upload
+     * @returns Promise that resolves when upload is complete
+     * @throws {Error} If the upload operation fails
+     * 
+     * @example
+     * ```typescript
+     * // Strapi calls this automatically for stream uploads
+     * await provider.uploadStream(file);
+     * ```
      */
     async uploadStream(file: StrapiFile): Promise<void> {
       await uploadFile(file);
     },
 
     /**
-     * Sub-task 6.1: Delete a file from Supabase Storage
+     * Delete a file from Supabase Storage
+     * 
+     * Removes the file from the configured Supabase bucket. Works for both
+     * public and private buckets.
+     * 
+     * @param file - The Strapi file object to delete
+     * @returns Promise that resolves when deletion is complete
+     * @throws {Error} If the deletion operation fails
+     * 
+     * @example
+     * ```typescript
+     * // Strapi calls this automatically when a file is deleted
+     * await provider.delete(file);
+     * ```
      */
     async delete(file: StrapiFile): Promise<void> {
       // Sub-task 6.1: Extract file path from file.url using getPathKey utility
@@ -121,7 +208,22 @@ export default (strapi: Strapi): UploadProvider => {
     },
 
     /**
-     * Sub-task 7.1: Validate file size against configured limits
+     * Validate file size against configured limits
+     * 
+     * Checks if the file size exceeds the configured size limit and throws
+     * an error with a human-readable message if it does. This is called by
+     * Strapi before attempting to upload a file.
+     * 
+     * @param file - The Strapi file object to validate
+     * @param options - Options object containing the sizeLimit in bytes
+     * @returns Promise that resolves if size is valid
+     * @throws {Error} If file size exceeds the limit, with human-readable size information
+     * 
+     * @example
+     * ```typescript
+     * // Strapi calls this automatically before upload
+     * await provider.checkFileSize(file, { sizeLimit: 10000000 }); // 10MB limit
+     * ```
      */
     async checkFileSize(file: StrapiFile, options: { sizeLimit: number }): Promise<void> {
       // Sub-task 7.1: Convert file size from KB to bytes using kbytesToBytes utility
@@ -140,8 +242,23 @@ export default (strapi: Strapi): UploadProvider => {
     },
 
     /**
-     * Sub-task 8.1: Check if the bucket is configured as private
-     * @returns true if bucket is private, false if public
+     * Check if the bucket is configured as private
+     * 
+     * Returns whether the bucket requires signed URLs for file access.
+     * This is determined by the publicFiles configuration option.
+     * 
+     * @returns true if bucket is private (requires signed URLs), false if public
+     * 
+     * @example
+     * ```typescript
+     * if (provider.isPrivate()) {
+     *   // Generate signed URL for private bucket
+     *   const { url } = await provider.getSignedUrl(file);
+     * } else {
+     *   // Use public URL directly
+     *   const url = file.url;
+     * }
+     * ```
      */
     isPrivate(): boolean {
       // Sub-task 8.1: Return inverse of publicFiles configuration
@@ -149,11 +266,40 @@ export default (strapi: Strapi): UploadProvider => {
     },
 
     /**
-     * Sub-task 8.2: Generate a signed URL for file access
-     * For public buckets, returns the existing public URL
-     * For private buckets, generates a time-limited signed URL
-     * @param file - The file object
+     * Generate a signed URL for file access
+     * 
+     * This method provides a unified interface for getting file URLs that works
+     * for both public and private buckets:
+     * 
+     * - For public buckets: Returns the existing permanent public URL
+     * - For private buckets: Generates a new time-limited signed URL
+     * 
+     * This graceful fallback approach allows frontend code to always call
+     * getSignedUrl() without needing to check the bucket type first.
+     * 
+     * @param file - The Strapi file object
      * @returns Promise resolving to object with url property
+     * @throws {Error} If signed URL generation fails (private buckets only)
+     * 
+     * @example
+     * ```typescript
+     * // Works for both public and private buckets
+     * const { url } = await provider.getSignedUrl(file);
+     * 
+     * // For private buckets, the URL will expire after signedUrlExpires seconds
+     * // For public buckets, returns the permanent public URL
+     * ```
+     * 
+     * @example
+     * ```typescript
+     * // In a custom controller
+     * async getFileUrl(ctx) {
+     *   const file = await strapi.plugins.upload.services.upload.findOne(ctx.params.id);
+     *   const provider = strapi.plugins.upload.provider;
+     *   const { url } = await provider.getSignedUrl(file);
+     *   return ctx.send({ url });
+     * }
+     * ```
      */
     async getSignedUrl(file: StrapiFile): Promise<{ url: string }> {
       // Sub-task 8.2: Check if bucket is private using isPrivate()
