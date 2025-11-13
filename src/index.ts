@@ -1,6 +1,6 @@
 import { StorageClient } from '@supabase/storage-js';
 import { ProviderConfig, UploadProvider, StrapiFile } from './types';
-import { getBearerToken, getStorageEndpoint } from './utils';
+import { getBearerToken, getStorageEndpoint, getPathKey } from './utils';
 
 /**
  * Strapi instance interface (minimal typing for what we need)
@@ -42,16 +42,60 @@ export default (strapi: Strapi): UploadProvider => {
     Authorization: getBearerToken(config.apiKey),
   });
 
+  /**
+   * Internal function to handle file upload to Supabase Storage
+   * Sub-tasks 5.1 & 5.2: Upload file and generate appropriate URL
+   */
+  const uploadFile = async (file: StrapiFile): Promise<void> => {
+    // Sub-task 5.1: Generate file path using getPathKey utility
+    const filePath = getPathKey(file, directory);
+
+    // Sub-task 5.1: Upload file to Supabase using storage.from(bucket).upload()
+    const { data, error } = await storageClient
+      .from(config.bucket)
+      .upload(filePath, file.stream || file.buffer!, {
+        contentType: file.mime,
+        duplex: 'half',
+        upsert: true,
+        cacheControl: '3600',
+      });
+
+    // Sub-task 5.1: Handle upload errors and throw with descriptive message
+    if (error) {
+      throw new Error(`Failed to upload file to Supabase: ${error.message}`);
+    }
+
+    // Sub-task 5.2: Check publicFiles configuration and generate appropriate URL
+    if (publicFiles) {
+      // Sub-task 5.2: For public buckets, call getPublicUrl() and store full URL
+      const { data: publicUrlData } = storageClient
+        .from(config.bucket)
+        .getPublicUrl(filePath);
+      
+      file.url = publicUrlData.publicUrl;
+    } else {
+      // Sub-task 5.2: For private buckets, store only file path
+      file.url = filePath;
+    }
+
+    // Sub-task 5.2: Set file.mime to contentType
+    file.mime = file.mime;
+  };
+
   // Sub-task 4.1: Return provider object with required methods
   return {
+    /**
+     * Sub-task 5.3: Upload a file to Supabase Storage
+     */
     async upload(file: StrapiFile): Promise<void> {
-      // To be implemented in task 5
-      throw new Error('upload method not yet implemented');
+      await uploadFile(file);
     },
 
+    /**
+     * Sub-task 5.4: Upload a file stream to Supabase Storage (alias pattern)
+     */
     async uploadStream(file: StrapiFile): Promise<void> {
-      // To be implemented in task 5
-      throw new Error('uploadStream method not yet implemented');
+      await uploadFile(file);
     },
 
     async delete(file: StrapiFile): Promise<void> {
