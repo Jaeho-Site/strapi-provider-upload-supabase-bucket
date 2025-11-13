@@ -586,7 +586,7 @@ describe('Error Handling', () => {
   });
 
   describe('Signed URL generation failures', () => {
-    it('should throw error when signed URL generation fails', async () => {
+    it('should return fallback URL when signed URL generation fails', async () => {
       const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
@@ -602,12 +602,12 @@ describe('Error Handling', () => {
       const provider = initProvider.init(config);
       const file = createMockFile({ url: 'invalid/path.jpg' });
 
-      await expect(provider.getSignedUrl(file)).rejects.toThrow(
-        'Failed to generate signed URL: Invalid file path'
-      );
+      const result = await provider.getSignedUrl(file);
+      
+      expect(result.url).toBe('#file-not-found-invalid/path.jpg');
     });
 
-    it('should throw error when file does not exist', async () => {
+    it('should return fallback URL when file does not exist', async () => {
       const config = createMockConfig({
         apiUrl: 'https://test.supabase.co',
         apiKey: 'test-key',
@@ -623,7 +623,9 @@ describe('Error Handling', () => {
       const provider = initProvider.init(config);
       const file = createMockFile({ url: 'missing.jpg' });
 
-      await expect(provider.getSignedUrl(file)).rejects.toThrow('Object not found');
+      const result = await provider.getSignedUrl(file);
+      
+      expect(result.url).toBe('#file-not-found-missing.jpg');
     });
   });
 

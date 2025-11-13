@@ -7,8 +7,12 @@ src/
 test/
 tests/
 __tests__/
+dist/__tests__/
 *.test.js
 *.test.ts
+*.test.d.ts
+*.test.d.ts.map
+*.test.js.map
 *.spec.js
 *.spec.ts
 
