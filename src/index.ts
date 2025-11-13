@@ -26,8 +26,8 @@ export default {
      * Sets file.url to Full URL (Public) or File Path (Private).
      */
     const uploadFile = async (file: StrapiFile): Promise<void> => {
-      
       const filePath = getPathKey(file, directory);
+     
       const { data, error } = await storageClient
         .from(config.bucket)
         .upload(filePath, file.stream || file.buffer!, {
@@ -38,6 +38,7 @@ export default {
         });
 
       if (error) {
+        console.error(`[Supabase Provider] Upload failed for ${filePath}:`, error);
         throw new Error(`Failed to upload file to Supabase: ${error.message}`);
       }
 
@@ -88,24 +89,31 @@ export default {
         return !publicFiles;
       },
 
-      /**
-       * Graceful fallback:
-       * - Public bucket: Returns existing static URL.
-       * - Private bucket: Generates temporary signed URL.
-       */
       async getSignedUrl(file: StrapiFile): Promise<{ url: string }> {
         if (!this.isPrivate()) {
           return { url: file.url };
         }
-        const filePath = file.url; // For private buckets, file.url is the path
-        const { data, error } = await storageClient
-          .from(config.bucket)
-          .createSignedUrl(filePath, signedUrlExpires);
 
-        if (error) {
-          throw new Error(`Failed to generate signed URL: ${error.message}`);
+        if (file.url.startsWith('http://') || file.url.startsWith('https://')) {
+          return { url: file.url };
         }
-        return { url: data.signedUrl };
+        
+        const filePath = file.url; // For private buckets, file.url is the path
+        
+        try {
+          const { data, error } = await storageClient
+            .from(config.bucket)
+            .createSignedUrl(filePath, signedUrlExpires);
+
+          if (error) {
+            console.warn(`[Supabase Provider] Failed to generate signed URL for ${filePath}:`, error.message);
+            return { url: `#file-not-found-${filePath}` };
+          }
+          return { url: data.signedUrl };
+        } catch (error) {
+          console.error(`[Supabase Provider] Error generating signed URL for ${filePath}:`, error);
+          return { url: `#error-${filePath}` };
+        }
       },
     };
   },

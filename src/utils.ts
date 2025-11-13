@@ -1,4 +1,3 @@
-import * as path from 'path';
 import { StrapiFile } from './types';
 
 /** Returns "Bearer {apiKey}" */
@@ -13,7 +12,8 @@ export function getStorageEndpoint(apiUrl: string): string {
 
 /**
  * Generates file path using the file's hash and extension.
- * Uses path.posix.join to ensure forward slashes (/) on all platforms (including Windows).
+ * Uses forward slashes (/) for cross-platform compatibility.
+ * Works in both Node.js and browser environments.
  */
 export function getPathKey(file: StrapiFile, directory: string = ''): string {
   const fileName = `${file.hash}${file.ext}`;
@@ -22,7 +22,9 @@ export function getPathKey(file: StrapiFile, directory: string = ''): string {
     return fileName;
   }
 
-  return path.posix.join(directory, fileName);
+  // Remove leading/trailing slashes and join with /
+  const cleanDir = directory.replace(/^\/+|\/+$/g, '');
+  return cleanDir ? `${cleanDir}/${fileName}` : fileName;
 }
 
 /**
