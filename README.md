@@ -21,6 +21,12 @@ Upload files to Supabase Storage from Strapi v5 with support for both public and
 npm install strapi-provider-upload-supabase-bucket
 ```
 
+or
+
+```bash
+yarn add strapi-provider-upload-supabase-bucket
+```
+
 ## Requirements
 
 - Node.js >= 20.0.0 and <= 22.x.x
